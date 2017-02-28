@@ -33,11 +33,12 @@ def transform_users(ldap_results):
             attributes.get('l', [''])[0],
             attributes.get('postalCode', [''])[0],
             attributes.get('c', [''])[0])
-
         new['phone'] = attributes.get('telephoneNumber', [''])[0]
         new['eid'] = attributes.get('employeeNumber', [''])[0]
-        # new['orig'] = candidate
         new['office'] = attributes.get('physicalDeliveryOfficeName', [''])[0]
+        new['notes'] = ''
+        new['tags'] = ['']
+        # new['orig'] = candidate
 
         users.append(new)
 
@@ -64,6 +65,35 @@ def save_and_update_photos(output_dir, records):
         filename = os.path.join(output_dir, name + '.jpg')
         open(filename, 'w').write(photo)
     logging.info("Saved %d photos" % count)
+
+
+def transform_paths(records):
+    """
+    Translate all the LDAP paths to just be usernames
+    """
+    default_manager = 'CN=Manager\\, Default,OU=TIBCO,OU=Apps,DC=activision,DC=com'
+    lookup = dict()
+    lookup[''] = ''
+    for record in records:
+        path = record['path']
+        username = record['username']
+        lookup[path] = username
+
+    for record in records:
+        try:
+            record['manager'] = lookup[record['manager']]
+        except KeyError:
+            if record['manager'] != default_manager:
+                logging.warning('Could not find manager: %s. Manager entry set to empty.' % record['manager'])
+            record['manager'] = ''
+
+        translated = []
+        for x in record['reports']:
+            try:
+                translated.append(lookup[x])
+            except KeyError:
+                logging.warning('Could not find employee: %s. Skipping as a report for %s' % (x, record['username']))
+        record['reports'] = translated
 
 
 def debug():
@@ -98,6 +128,7 @@ def main():
     if not os.path.isdir(PHOTO_DIR):
         os.makedirs(PHOTO_DIR)
     save_and_update_photos(PHOTO_DIR, users)
+    transform_paths(users)
 
     jsondata = json.dumps(users, ensure_ascii=False, sort_keys=True, indent=4, separators=(',', ': '))
 
