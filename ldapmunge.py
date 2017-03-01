@@ -13,6 +13,10 @@ PHOTO_DIR = '/data/photos'
 TARGETFILE = '/data/users.json'
 
 
+def sanitize_phone(candidate):
+    return candidate.strip().replace(' ', '').replace('-', '')
+
+
 def transform_users(ldap_results):
     users = []
     for candidate in ldap_results:
@@ -34,7 +38,7 @@ def transform_users(ldap_results):
             attributes.get('l', [''])[0],
             attributes.get('postalCode', [''])[0],
             attributes.get('c', [''])[0])
-        new['phone'] = attributes.get('telephoneNumber', [''])[0]
+        new['phone'] = sanitize_phone(attributes.get('telephoneNumber', [''])[0])
         new['eid'] = attributes.get('employeeNumber', [''])[0]
         new['office'] = attributes.get('physicalDeliveryOfficeName', [''])[0]
         new['notes'] = ''
