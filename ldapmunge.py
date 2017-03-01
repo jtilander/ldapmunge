@@ -26,6 +26,7 @@ def transform_users(ldap_results):
         new['company'] = attributes.get('company', [''])[0]
         new['photo'] = attributes.get('thumbnailPhoto', [''])[0]
         new['manager'] = attributes.get('manager', [''])[0]
+        new['managername'] = ''
         new['reports'] = attributes.get('directReports', [''])
         new['description'] = attributes.get('description', [''])[0]
         new['address'] = "%s, %s %s, %s" % (
@@ -74,10 +75,14 @@ def transform_paths(records):
     default_manager = 'CN=Manager\\, Default,OU=TIBCO,OU=Apps,DC=activision,DC=com'
     lookup = dict()
     lookup[''] = ''
+    id2name = dict()
+    id2name[''] = ''
     for record in records:
         path = record['path']
         username = record['username']
         lookup[path] = username
+        fullname = record['fullname']
+        id2name[username] = fullname
 
     for record in records:
         try:
@@ -86,6 +91,12 @@ def transform_paths(records):
             if record['manager'] != default_manager:
                 logging.warning('Could not find manager: %s. Manager entry set to empty.' % record['manager'])
             record['manager'] = ''
+
+        try:
+            record['managername'] = id2name[record['manager']]
+        except KeyError:
+            logging.warning('Failed to lookup manager id %s for user %s' % (record['manager'], record['username']))
+            record['managername'] = ''
 
         translated = []
         for x in record['reports']:
